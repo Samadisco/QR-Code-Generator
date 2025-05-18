@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { ChangeEvent, CSSProperties } from 'react';
 import React, { useState, useRef, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import * as htmlToImage from 'html-to-image';
-import { Download, Settings2, Type, LinkIcon, Palette, TextCursorInput, Move } from 'lucide-react';
+import { Download, Settings2, Type, LinkIcon, Palette, TextCursorInput, Move, Smartphone } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,16 +23,16 @@ const QrCodeGenerator: React.FC = () => {
   const qrContainerRef = useRef<HTMLDivElement>(null);
 
   const [content, setContent] = useState<string>('https://example.com');
-  const [labelText, setLabelText] = useState<string>('Scan Me!');
-  const [labelColor, setLabelColor] = useState<string>('#000000');
-  const [labelFontSize, setLabelFontSize] = useState<number>(20);
+  const [labelText, setLabelText] = useState<string>('SCAN TO CONFIRM');
+  const [labelColor, setLabelColor] = useState<string>('#FFFFFF');
+  const [labelFontSize, setLabelFontSize] = useState<number>(18);
   const [labelFontFamily, setLabelFontFamily] = useState<string>(FONT_FAMILIES[0].value);
   const [labelXOffset, setLabelXOffset] = useState<number>(0);
-  const [labelYOffset, setLabelYOffset] = useState<number>(5); // Initial small gap below QR
+  const [labelYOffset, setLabelYOffset] = useState<number>(0);
 
   const [qrCodeSize, setQrCodeSize] = useState<number>(256);
-  const [qrBgColor, setQrBgColor] = useState<string>('#FFFFFF');
-  const [qrFgColor, setQrFgColor] = useState<string>('#000000');
+  const [qrBgColor, setQrBgColor] = useState<string>('#000000'); // Default to black for the container
+  const [qrFgColor, setQrFgColor] = useState<string>('#000000'); // QR pattern color (black)
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -46,12 +47,14 @@ const QrCodeGenerator: React.FC = () => {
 
     try {
       let dataUrl: string;
+      // Ensure the htmlToImage background matches the visual qrBgColor
+      const options = { backgroundColor: qrBgColor }; 
       if (format === 'svg') {
-        dataUrl = await htmlToImage.toSvg(element, { backgroundColor: qrBgColor });
+        dataUrl = await htmlToImage.toSvg(element, options);
       } else if (format === 'png') {
-        dataUrl = await htmlToImage.toPng(element, { backgroundColor: qrBgColor });
+        dataUrl = await htmlToImage.toPng(element, options);
       } else { // jpeg
-        dataUrl = await htmlToImage.toJpeg(element, { backgroundColor: qrBgColor, quality: 0.95 });
+        dataUrl = await htmlToImage.toJpeg(element, { ...options, quality: 0.95 });
       }
       downloadFile(dataUrl, filename);
       toast({ title: 'Success!', description: `QR Code downloaded as ${format.toUpperCase()}.` });
@@ -63,18 +66,6 @@ const QrCodeGenerator: React.FC = () => {
     }
   }, [qrBgColor, toast]);
   
-  const labelStyle: CSSProperties = {
-    color: labelColor,
-    fontSize: `${labelFontSize}px`,
-    fontFamily: labelFontFamily,
-    transform: `translate(${labelXOffset}px, ${labelYOffset}px)`,
-    textAlign: 'center',
-    marginTop: '0.5rem', // Default spacing if Y offset is 0
-    maxWidth: `${qrCodeSize}px`,
-    wordBreak: 'break-word', // Changed from wordWrap for CSSProperties
-    lineHeight: '1.2',
-  };
-
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 max-w-5xl">
       <Card className="shadow-xl">
@@ -99,7 +90,7 @@ const QrCodeGenerator: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="labelText" className="font-medium">Label Text</Label>
-                <Input id="labelText" value={labelText} onChange={(e: ChangeEvent<HTMLInputElement>) => setLabelText(e.target.value)} placeholder="Scan Me!" />
+                <Input id="labelText" value={labelText} onChange={(e: ChangeEvent<HTMLInputElement>) => setLabelText(e.target.value)} placeholder="SCAN TO CONFIRM" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -148,7 +139,7 @@ const QrCodeGenerator: React.FC = () => {
                   <Input id="qrFgColor" type="color" value={qrFgColor} onChange={(e) => setQrFgColor(e.target.value)} className="h-10 p-1"/>
                 </div>
                 <div>
-                  <Label htmlFor="qrBgColor" className="font-medium flex items-center"><Palette className="mr-2 h-4 w-4"/>Background Color</Label>
+                  <Label htmlFor="qrBgColor" className="font-medium flex items-center"><Palette className="mr-2 h-4 w-4"/>Container Background</Label>
                   <Input id="qrBgColor" type="color" value={qrBgColor} onChange={(e) => setQrBgColor(e.target.value)} className="h-10 p-1"/>
                 </div>
               </div>
@@ -159,21 +150,39 @@ const QrCodeGenerator: React.FC = () => {
           <div className="flex flex-col items-center justify-center space-y-6 p-4 rounded-lg bg-secondary/30">
             <div
               ref={qrContainerRef}
-              className="inline-block p-4 rounded-md transition-all duration-300"
-              style={{ backgroundColor: qrBgColor }}
+              className="inline-flex flex-col items-center p-4 rounded-md transition-all duration-300"
+              style={{ backgroundColor: qrBgColor }} // This will be black by default
             >
-              <QRCodeSVG
-                value={content}
-                size={qrCodeSize}
-                bgColor="rgba(0,0,0,0)" // Transparent, parent div bg will show
-                fgColor={qrFgColor}
-                level="H" // High error correction
-                includeMargin={true}
-              />
+              {/* QR Code visual block */}
+              <div className="bg-white p-3 rounded-lg shadow-md"> {/* White background, padding, rounded corners for QR */}
+                <QRCodeSVG
+                  value={content}
+                  size={qrCodeSize}
+                  bgColor="#FFFFFF"      // QR code's own drawing background is white
+                  fgColor={qrFgColor}     // QR code pattern color
+                  level="H"
+                  includeMargin={false} // Wrapper div handles padding and rounding
+                />
+              </div>
+
+              {/* Label and Icon block */}
               {labelText && (
-                <p style={labelStyle}>
-                  {labelText}
-                </p>
+                <div
+                  className="flex items-center justify-center mt-4" // Spacing from QR code
+                  style={{
+                    color: labelColor, // Controlled by state, default white
+                    fontSize: `${labelFontSize}px`,
+                    fontFamily: labelFontFamily,
+                    transform: `translate(${labelXOffset}px, ${labelYOffset}px)`,
+                  }}
+                >
+                  <div className="bg-black rounded-full p-2 mr-2.5 flex items-center justify-center border border-white/50">
+                    <Smartphone className="h-5 w-5 text-white" />
+                  </div>
+                  <span style={{ lineHeight: '1.1', letterSpacing: '0.05em' }}>
+                    {labelText}
+                  </span>
+                </div>
               )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md">

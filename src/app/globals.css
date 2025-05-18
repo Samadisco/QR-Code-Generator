@@ -3,9 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Geist', Arial, Helvetica, sans-serif;
-}
+/* Removed body font-family rule, Tailwind will handle it via font-sans utility configured with Inter */
 
 @layer base {
   :root {
